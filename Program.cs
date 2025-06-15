@@ -14,7 +14,7 @@ namespace EcoSim
     public struct Job
     {
         public string Name { get; set; }
-        public Resource Yield { get; set; }
+        public Resource Yield { get; set; } // Will be a dictionary, and include the upkeep as well later.
         public Resource? Upkeep { get; set; }
         public Job(string name, Resource yield, Resource? upkeep = null)
         {
@@ -29,13 +29,14 @@ namespace EcoSim
     public class NaturalResource
     {
         // Raw resource deposits. Provides a basic natural job, or can be exploited by infrastructure.
-        public int Name { get; set; }
+        public string Name { get; set; }
         public int TotalDeposits { get; set; } // How many deposits exist
         public int AvailableDeposits { get; set; } // How many deposits are currently available for jobs
 
         public Job Job { get; set; } // The job that this provides.
-        public NaturalResource(string Name, int deposits, Job job)
+        public NaturalResource(string name, int deposits, Job job)
         {
+            Name = name;
             TotalDeposits = deposits;
             AvailableDeposits = deposits;
             Job = job;
@@ -83,6 +84,9 @@ namespace EcoSim
 
         public Planet()
         {
+            Stockpiles.Add("Food", new Resource("Food", 50));
+            Stockpiles.Add("Energy", new Resource("Energy", 20));
+            Stockpiles.Add("Minerals", new Resource("Minerals", 30));
         }
         public void AddPopulation(int amount)
         {
@@ -112,26 +116,31 @@ namespace EcoSim
 
             foreach(JobSector sector in JobSectors.Values)
             {
-                if (sector.Workers > 0)
+                int jobsToWork = sector.Workers;
+                if (jobsToWork > 0)
                 {
                     // Simulate job processing
                     if (sector.Job.Upkeep != null)
                     {
-                        // Check if we have enough resources to pay for upkeep
-                        if (!Stockpiles.ContainsKey(sector.Job.Upkeep.Name) || Stockpiles[sector.Job.Upkeep.Name].Quantity < sector.Job.Upkeep.Quantity * sector.Workers)
-                        {
-                            // Not enough resources to pay for upkeep, skip this sector
-                            continue;
-                        }
-                        // Deduct upkeep from stockpiles
-                        Stockpiles[sector.Job.Upkeep.Name].Quantity -= sector.Job.Upkeep.Quantity * sector.Workers;
+                        // Check how many jobs can be worked based on upkeep
+                        string upkeepResourceName = sector.Job.Upkeep.Name;
+                        int stockpileQuantity = Stockpiles.ContainsKey(upkeepResourceName) ? Stockpiles[upkeepResourceName].Quantity : 0;
+                        jobsToWork = Math.Min(sector.Workers, stockpileQuantity / sector.Job.Upkeep.Quantity);
+                        
+                        // Deduct upkeep from stockpile
+                        Stockpiles[sector.Job.Upkeep.Name].Quantity -= sector.Job.Upkeep.Quantity * jobsToWork;
                     }
-                    // Produce yield
-                    if (!Stockpiles.ContainsKey(sector.Job.Yield.Name))
+
+                    // Really, all resources should be initilized before update is even allowed to be called.
+                    if(!Stockpiles.TryGetValue(sector.Job.Yield.Name, out Resource? value))
                     {
-                        Stockpiles.Add(sector.Job.Yield.Name, new Resource(sector.Job.Yield.Name, 0));
+                        value = new Resource(sector.Job.Yield.Name, 0);
+                        Stockpiles.Add(sector.Job.Yield.Name, value);
                     }
-                    Stockpiles[sector.Job.Yield.Name].Quantity += sector.Job.Yield.Quantity * sector.Workers;
+
+                    // Produce yield
+
+                    value.Quantity += sector.Job.Yield.Quantity * sector.Workers;
                 }
             }
         }
@@ -197,6 +206,9 @@ namespace EcoSim
             // Probably will want to not have this provide a job normally. Or as a job like "Unemployed" 
             earth.AddJobs(new Job("Manual Labour", new Resource("Energy", 1)), 100);
 
+            // Coal power is a basic power source, but requires upkeep of minerals.
+            earth.AddJobs(new Job("Coal Power", new Resource("Energy", 8), new Resource("Minerals",-3)), 2);
+
 
             Console.WriteLine($"Planet created with {earth.NaturalResources.Count} resources.");
 
@@ -204,6 +216,7 @@ namespace EcoSim
             earth.AssignJobs("Manual Labour", 1);
             earth.AssignJobs("Surface Mining", 2);
             earth.AssignJobs("Hunter Gathering", 5);
+            earth.AssignJobs("Coal Power", 1);
 
 
             while (true)
