@@ -1,22 +1,15 @@
 ﻿
+using EcoSim.Objects;
+using System.Numerics;
+
 namespace EcoSim
 {
-    public class Resource
-    {
-        public string Name { get; set; }
-        public int Quantity { get; set; }
-        public Resource(string name, int quantity)
-        {
-            Name = name;
-            Quantity = quantity;
-        }
-    }
     public struct Job
     {
-        public string Name { get; set; }
-        public Resource Yield { get; set; } // Will be a dictionary, and include the upkeep as well later.
-        public Resource? Upkeep { get; set; }
-        public Job(string name, Resource yield, Resource? upkeep = null)
+        public string Name { get; private set; }
+        public LabeledValue<int> Yield { get; private set; } // Will be a dictionary, and include the upkeep as well later.
+        public LabeledValue<int>? Upkeep { get; private set; }
+        public Job(string name, LabeledValue<int> yield, LabeledValue<int>? upkeep = null)
         {
             Name = name;
             Yield = yield;
@@ -24,6 +17,7 @@ namespace EcoSim
         }
         // Kinda want a method to try and run the job, but this is a struct.
         // Its the JobSector that will manage the workers and resources.
+        // Once created, this isn't supposed to be changed.
     }
 
     public class NaturalResource
@@ -79,14 +73,14 @@ namespace EcoSim
         public int UnemployedPopulation => Population - JobSectors.Values.Sum(sector => sector.Workers);
         public Dictionary<string, NaturalResource> NaturalResources = [];
         public Dictionary<string, District> Districts               = [];
-        public Dictionary<string, Resource> Stockpiles              = [];
+        public Dictionary<string, LabeledValue<int>> Stockpiles              = [];
         public Dictionary<string, JobSector> JobSectors             = [];
 
         public Planet()
         {
-            Stockpiles.Add("Food", new Resource("Food", 50));
-            Stockpiles.Add("Energy", new Resource("Energy", 20));
-            Stockpiles.Add("Minerals", new Resource("Minerals", 30));
+            Stockpiles.Add("Food", new LabeledValue<int>("Food", 50));
+            Stockpiles.Add("Energy", new LabeledValue<int>("Energy", 20));
+            Stockpiles.Add("Minerals", new LabeledValue<int>("Minerals", 30));
         }
         public void AddPopulation(int amount)
         {
@@ -98,49 +92,50 @@ namespace EcoSim
             // So, the jobSectors should be the only part we have to manage on update.
             // Tell it to update, and this should cause resource changes to occur.
 
-            // Population eats food
+            // Population eats food. Ideally this would be like, Population.update or something. Hardcode for now
             if (Stockpiles.ContainsKey("Food"))
             {
                 int foodNeeded = Population;
                 if (Stockpiles["Food"].Quantity < foodNeeded)
                 {
                     // Not enough food, Technically, the population should start to die off or something.
-                    Stockpiles["Food"].Quantity = 0; // All food consumed
+                    Stockpiles["Food"] = Stockpiles["Food"].WithValue(0); // All food consumed
                 }
                 else
                 {
                     // Enough food, consume it
-                    Stockpiles["Food"].Quantity -= foodNeeded;
+                    Stockpiles["Food"] -= foodNeeded;
                 }
             }
 
+            // Then, do all the jobs that exist, if plausible.
             foreach(JobSector sector in JobSectors.Values)
             {
                 int jobsToWork = sector.Workers;
-                if (jobsToWork > 0)
+                // If there are no workers, skip this sector
+                if(jobsToWork > 0)
                 {
-                    // Simulate job processing
-                    if (sector.Job.Upkeep != null)
+                    // If the job requires resources, check if we have enough
+                    if(sector.Job.Upkeep != null)
                     {
-                        // Check how many jobs can be worked based on upkeep
-                        string upkeepResourceName = sector.Job.Upkeep.Name;
-                        int stockpileQuantity = Stockpiles.ContainsKey(upkeepResourceName) ? Stockpiles[upkeepResourceName].Quantity : 0;
-                        jobsToWork = Math.Min(sector.Workers, stockpileQuantity / sector.Job.Upkeep.Quantity);
+                        var Upkeep = sector.Job.Upkeep.Value; // Get the upkeep delta
+
+                        // Check if we have enough resources to pay the upkeep
+                        int stockpileQuantity = Stockpiles.ContainsKey(Upkeep.Label) ? Stockpiles[Upkeep.Label].Quantity : 0;
+
+                        // See how many jobs we have resources for
+                        jobsToWork = Math.Min(sector.Workers, stockpileQuantity / sector.Job.Upkeep.Value);
                         
+
                         // Deduct upkeep from stockpile
-                        Stockpiles[sector.Job.Upkeep.Name].Quantity -= sector.Job.Upkeep.Quantity * jobsToWork;
+                        Stockpiles[Upkeep.Label] = Stockpiles[Upkeep.Label] + (Upkeep * jobsToWork);
                     }
 
-                    // Really, all resources should be initilized before update is even allowed to be called.
-                    if(!Stockpiles.TryGetValue(sector.Job.Yield.Name, out Resource? value))
+                    if(!Stockpiles.TryGetValue(sector.Job.Yield.Label, out LabeledValue<int> yield))
                     {
-                        value = new Resource(sector.Job.Yield.Name, 0);
-                        Stockpiles.Add(sector.Job.Yield.Name, value);
+                        Stockpiles.Add(sector.Job.Yield.Label, yield.WithQuantity(0));
                     }
-
-                    // Produce yield
-
-                    value.Quantity += sector.Job.Yield.Quantity * sector.Workers;
+                    Stockpiles[sector.Job.Yield.Label] = Stockpiles[sector.Job.Yield.Label] + (sector.Job.Yield * jobsToWork);
                 }
             }
         }
@@ -198,16 +193,16 @@ namespace EcoSim
             // Produced resources like Metal, Alloy, Consumer Goods, Tools, but we need upkeep and factory jobs for those.
             
 
-            earth.AddNaturalResource(new NaturalResource("Ore Deposits",12, new Job("Surface Mining", new Resource("Minerals", 1))));
-            earth.AddNaturalResource(new NaturalResource("Wild Edibles and Foods",8, new Job("Hunter Gathering", new Resource("Food", 2))));
+            earth.AddNaturalResource(new NaturalResource("Ore Deposits",12, new Job("Surface Mining", new LabeledValue<int>("Minerals", 1))));
+            earth.AddNaturalResource(new NaturalResource("Wild Edibles and Foods",8, new Job("Hunter Gathering", new LabeledValue<int>("Food", 2))));
             
             // Natural energy is kinda connected to people innately. Job cap is infinite.
             // This is really more a workshop or something, I dunno. Energy is abstract.
             // Probably will want to not have this provide a job normally. Or as a job like "Unemployed" 
-            earth.AddJobs(new Job("Manual Labour", new Resource("Energy", 1)), 100);
+            earth.AddJobs(new Job("Manual Labour", new LabeledValue<int>("Energy", 1)), 100);
 
             // Coal power is a basic power source, but requires upkeep of minerals.
-            earth.AddJobs(new Job("Coal Power", new Resource("Energy", 8), new Resource("Minerals",-3)), 2);
+            earth.AddJobs(new Job("Coal Power", new LabeledValue<int>("Energy", 8), new LabeledValue<int>("Minerals",-3)), 2);
 
 
             Console.WriteLine($"Planet created with {earth.NaturalResources.Count} resources.");
