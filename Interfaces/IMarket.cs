@@ -9,6 +9,7 @@ namespace EcoSim.Interfaces
 {
     internal interface IMarket
     {
-
+        string Name {get; }
+        List<Tuple<string, int>> PriceMap {get;}
     }
 }

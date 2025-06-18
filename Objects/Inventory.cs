@@ -36,25 +36,26 @@ namespace EcoSim.Objects
             Items.Remove(item);
         }
 
-        public bool Contains(string item)
-        {
-            var existingItem = Items.FirstOrDefault(i => i.Label == item);
-            if (existingItem.IsEmpty)
-            {
-                throw new ArgumentException($"Item '{item}' not found in inventory.");
-            }
-        }
-        public bool TrySpend (LabeledValue<int> cost)
-        {
-            // Negative checks are permitted here.
-            // I think the cost should be positive, and subtracted. And the cost is greater than the available quantity, return false.
-            if (Contains(cost.Label) && )
-            { 
-                
-            }
-            
-            return false
-
-        }
+        //public bool Contains(string item)
+        //{
+        //    var existingItem = Items.FirstOrDefault(i => i.Label == item);
+        //    if (existingItem.IsEmpty)
+        //    {
+        //        false;
+        //    }
+        //    true;
+        //}
+        //public bool TrySpend (LabeledValue<int> cost)
+        //{
+        //    // Negative checks are permitted here.
+        //    // I think the cost should be positive, and subtracted. And the cost is greater than the available quantity, return false.
+        //    if (Contains(cost.Label) && )
+        //    { 
+        //        
+        //    }
+        //    
+        //    return false
+        //
+        //}
     }
 }

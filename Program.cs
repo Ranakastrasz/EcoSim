@@ -1,192 +1,109 @@
 ﻿
 using EcoSim.Objects;
 using System.Numerics;
+using EcoSim.Planet;
+using EcoSim.Ships;
+using EcoSim.Interfaces;
+using System.Drawing;
 
 namespace EcoSim
 {
-    public struct Job
-    {
-        public string Name { get; private set; }
-        public LabeledValue<int> Yield { get; private set; } // Will be a dictionary, and include the upkeep as well later.
-        public LabeledValue<int>? Upkeep { get; private set; }
-        public Job(string name, LabeledValue<int> yield, LabeledValue<int>? upkeep = null)
-        {
-            Name = name;
-            Yield = yield;
-            Upkeep = upkeep;
-        }
-        // Kinda want a method to try and run the job, but this is a struct.
-        // Its the JobSector that will manage the workers and resources.
-        // Once created, this isn't supposed to be changed.
-    }
-
-    public class NaturalResource
-    {
-        // Raw resource deposits. Provides a basic natural job, or can be exploited by infrastructure.
-        public string Name { get; set; }
-        public int TotalDeposits { get; set; } // How many deposits exist
-        public int AvailableDeposits { get; set; } // How many deposits are currently available for jobs
-
-        public Job Job { get; set; } // The job that this provides.
-        public NaturalResource(string name, int deposits, Job job)
-        {
-            Name = name;
-            TotalDeposits = deposits;
-            AvailableDeposits = deposits;
-            Job = job;
-        }
-        // At most, maybe it talks to the District
-    }
-    public class JobSector
-    {
-        public Job Job { get; set; }
-        public int JobSlots { get; set; }
-        public int Workers { get; set; } // How many workers are currently assigned to this job
-
-        public JobSector(Job job)
-        {
-            Job = job;
-            JobSlots = 0;
-            Workers = 0;
-        }
-        // Update, Tells the workers to do the job, and somehow sends the resource changes to the somewhere else.
-    }
-
-    public class District
-    {
-        public int TotalSize { get; set; } // How many deposits are being exploited
-
-        public Job Job { get; set; } // The job that this provides.
-        public District(Job job)
-        {
-            TotalSize = 0;
-            Job = job;
-        }
-        // Infrastructure. Built on top of the natural resources, and provides a better job than the normal one.
-        // Also removes the natural resource's job from the sector.
-    }
-
-
-    public class Planet
-    { 
-        public int Population = 0; // Kinda a resource too, but interacts with jobs very differently.
-        public int UnemployedPopulation => Population - JobSectors.Values.Sum(sector => sector.Workers);
-        public Dictionary<string, NaturalResource> NaturalResources = [];
-        public Dictionary<string, District> Districts               = [];
-        public Dictionary<string, LabeledValue<int>> Stockpiles              = [];
-        public Dictionary<string, JobSector> JobSectors             = [];
-
-        public Planet()
-        {
-            Stockpiles.Add("Food", new LabeledValue<int>("Food", 50));
-            Stockpiles.Add("Energy", new LabeledValue<int>("Energy", 20));
-            Stockpiles.Add("Minerals", new LabeledValue<int>("Minerals", 30));
-        }
-        public void AddPopulation(int amount)
-        {
-            Population += amount;
-        }
-
-        public void Update()
-        {
-            // So, the jobSectors should be the only part we have to manage on update.
-            // Tell it to update, and this should cause resource changes to occur.
-
-            // Population eats food. Ideally this would be like, Population.update or something. Hardcode for now
-            if (Stockpiles.ContainsKey("Food"))
-            {
-                int foodNeeded = Population;
-                if (Stockpiles["Food"].Quantity < foodNeeded)
-                {
-                    // Not enough food, Technically, the population should start to die off or something.
-                    Stockpiles["Food"] = Stockpiles["Food"].WithValue(0); // All food consumed
-                }
-                else
-                {
-                    // Enough food, consume it
-                    Stockpiles["Food"] -= foodNeeded;
-                }
-            }
-
-            // Then, do all the jobs that exist, if plausible.
-            foreach(JobSector sector in JobSectors.Values)
-            {
-                int jobsToWork = sector.Workers;
-                // If there are no workers, skip this sector
-                if(jobsToWork > 0)
-                {
-                    // If the job requires resources, check if we have enough
-                    if(sector.Job.Upkeep != null)
-                    {
-                        var Upkeep = sector.Job.Upkeep.Value; // Get the upkeep delta
-
-                        // Check if we have enough resources to pay the upkeep
-                        int stockpileQuantity = Stockpiles.ContainsKey(Upkeep.Label) ? Stockpiles[Upkeep.Label].Quantity : 0;
-
-                        // See how many jobs we have resources for
-                        jobsToWork = Math.Min(sector.Workers, stockpileQuantity / sector.Job.Upkeep.Value);
-                        
-
-                        // Deduct upkeep from stockpile
-                        Stockpiles[Upkeep.Label] = Stockpiles[Upkeep.Label] + (Upkeep * jobsToWork);
-                    }
-
-                    if(!Stockpiles.TryGetValue(sector.Job.Yield.Label, out LabeledValue<int> yield))
-                    {
-                        Stockpiles.Add(sector.Job.Yield.Label, yield.WithQuantity(0));
-                    }
-                    Stockpiles[sector.Job.Yield.Label] = Stockpiles[sector.Job.Yield.Label] + (sector.Job.Yield * jobsToWork);
-                }
-            }
-        }
-
-        internal void AddNaturalResource(NaturalResource naturalResource)
-        {
-            if (!NaturalResources.TryGetValue(naturalResource.Job.Name, out NaturalResource? value))
-            {
-                NaturalResources.Add(naturalResource.Job.Name, naturalResource);
-                JobSectors.Add(naturalResource.Job.Name, new JobSector(naturalResource.Job)
-                { JobSlots = naturalResource.AvailableDeposits });
-            }
-            else
-            {
-                value.TotalDeposits += naturalResource.TotalDeposits;
-                value.AvailableDeposits += naturalResource.AvailableDeposits;
-            }
-        }
-
-        internal void AddJobs(Job job, int quantuty)
-        {
-            // Not sure if this is a function i really want to have in the Planet class, but it makes sense for now.
-            JobSectors.Add(job.Name, new JobSector(job)
-            { JobSlots = quantuty });
-        }
-        public void AssignJobs(string Name, int quantity)
-        {
-            // Probably want a reverse function to unassign jobs too. or let this do negative quantities.
-            if(UnemployedPopulation < quantity)
-            {
-                return; // Not enough population to assign jobs
-            }
-            // Assign workers to the job sector
-            if (JobSectors.ContainsKey(Name))
-            {
-                var sector = JobSectors[Name];
-                sector.Workers += quantity;
-                if (sector.Workers > sector.JobSlots)
-                {
-                    // If there are more workers than slots, cap it
-                    sector.Workers = sector.JobSlots;
-                }
-            }
-        }
-    }
     class Program
     {
         static void Main(string[] args)
         {
+            Console.WriteLine("Welcome to EcoSim!");
+            Console.WriteLine("Type 'exit' to quit the simulation.");
+            Console.WriteLine("Type 'ship' to simulate a ship, or 'planet' to simulate a planet.");
+            string? input = Console.ReadLine()?.ToLower();
+            
+            if(input == "exit")
+                return;
+            if(input == "planet")
+            {
+                PlanetSim();    
+            }
+            else if(input == "ship")
+            {
+                ShipSim();
+            }
+            else
+            {
+                Console.WriteLine("Invalid input. Please type 'ship' or 'planet' or 'exit'.");
+            }
+        }
 
-            Planet earth = new Planet();
+        static internal void ShipSim()
+        { 
+            Ship ship = new("SS Enterprise", new(0,0), 10, 1000);
+
+            Dictionary<string, DummyPlanet> planets = new()
+            {
+                { "earth", new DummyPlanet("Earth", new Point(0, 0)) },
+                { "mars", new DummyPlanet("Mars", new Point(4, 0)) },
+                { "venus", new DummyPlanet("Venus", new Point(2, 3)) }
+            };
+
+            planets["earth"].AddPrice("Food", 10);
+            planets["earth"].AddPrice("Fuel", 5);
+            planets["earth"].AddPrice("Minerals", 15);
+
+            planets["mars"].AddPrice("Food", 12);
+            planets["mars"].AddPrice("Fuel", 6);
+            planets["mars"].AddPrice("Minerals", 18);
+            
+            planets["venus"].AddPrice("Food", 8);
+            planets["venus"].AddPrice("Fuel", 4);
+            planets["venus"].AddPrice("Minerals", 10);
+
+            while (true)
+            {
+                String oString = ship.ToString() + "\n";
+                DummyPlanet? currentPlanet = planets.Values.FirstOrDefault(p => p.Position == ship.Position);
+
+                foreach (DummyPlanet? planet in planets.Values)
+                {
+                    oString += planet.ToString() + "\n";
+                }
+
+                Console.WriteLine(oString);
+                Console.WriteLine("Enter command (refuel, jump, market, exit):");
+                // Wait for user input to continue
+                string iString = Console.ReadLine()?.ToLower() ?? "";
+
+                if(iString == "exit")
+                    break;
+                if(iString == "jump")
+                {
+                    Console.WriteLine("Enter Destination:");
+                    iString = Console.ReadLine()?.ToLower() ?? "";
+                    DummyPlanet? destination = planets.GetValueOrDefault(iString);
+                    if (destination == null)
+                    {
+                        Console.WriteLine("Invalid destination.");
+                        continue;
+                    }
+                    if (ship.TryJump(destination.Position)) // Assuming 10 is the fuel cost for a jump
+                    {
+                        Console.WriteLine($"Jumped to {destination.Name} at position {destination.Position}.");
+                    }
+                    else
+                    {
+                        Console.WriteLine("Not enough fuel to jump.");
+                    }
+                }
+                Console.WriteLine("---------------------------------------------------");
+                Console.WriteLine("Press Enter to Continue");
+                Console.ReadLine();
+            }   
+            
+
+        }
+
+        static internal void PlanetSim()
+        { 
+
+            SmartPlanet earth = new SmartPlanet();
             earth.AddPopulation(10); // Initial population
             // Food, Energy, Minerals are the only raw resources.
             // Later, strategic resources may be added
@@ -227,7 +144,7 @@ namespace EcoSim
                 // Wait for user input to continue
                 if(Console.ReadLine() == "exit")
                     break;
-            }
+            }   
         }
     }
 }
