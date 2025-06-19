@@ -37,7 +37,7 @@ namespace EcoSim.Planet
             // If the item already exists, update its quantity
             if (Stockpiles.ContainsKey(item.Label))
             {
-                Stockpiles[item.Label] = Stockpiles[item.Label] + item.Quantity;
+                Stockpiles[item.Label] = Stockpiles[item.Label] + item.Value;
             }
             else
             {
@@ -53,7 +53,7 @@ namespace EcoSim.Planet
             if (Stockpiles.ContainsKey("Food"))
             {
                 int foodNeeded = Population;
-                if (Stockpiles["Food"].Quantity < foodNeeded)
+                if (Stockpiles["Food"].Value < foodNeeded)
                 {
                     // Not enough food, Technically, the population should start to die off or something.
                     Stockpiles["Food"] = Stockpiles["Food"].WithValue(0); // All food consumed
@@ -78,7 +78,7 @@ namespace EcoSim.Planet
                         var Upkeep = sector.Job.Upkeep.Value; // Get the upkeep delta
 
                         // Check if we have enough resources to pay the upkeep
-                        int stockpileQuantity = Stockpiles.ContainsKey(Upkeep.Label) ? Stockpiles[Upkeep.Label].Quantity : 0;
+                        int stockpileQuantity = Stockpiles.ContainsKey(Upkeep.Label) ? Stockpiles[Upkeep.Label].Value : 0;
 
                         // See how many jobs we have resources for
                         jobsToWork = Math.Min(sector.Workers, stockpileQuantity / sector.Job.Upkeep.Value);

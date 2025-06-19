@@ -11,6 +11,10 @@ using System.Threading.Tasks;
 
 namespace EcoSim.Ships
 {
+    public class OutOfFuel : Exception{ }
+    public class InvalidJump : Exception{ }
+    public class InsufficientCredits : Exception{ }
+    public class InsufficientCargo : Exception{ }
     internal class Ship: IShip
     {
         public string Name {get; private set;} = "";
@@ -29,49 +33,88 @@ namespace EcoSim.Ships
             this.credits = credits;
         }
 
+        public void TryBuyCargo(LabeledValue<int> cargo, int pricePerUnit)
+        {
+            int totalCost = cargo.Value * pricePerUnit;
+            if (credits >= totalCost)
+            {
+                credits -= totalCost;
+                AddCargo(cargo);
+            }
+            else
+            {
+                throw new InsufficientCredits();
+            }
+        }
+        public void TrySellCargo(LabeledValue<int> cargo, int pricePerUnit)
+        {
+            if (CargoHold.ContainsKey(cargo.Label) && CargoHold[cargo.Label] >= cargo.Value)
+            {
+                CargoHold[cargo.Label] -= cargo.Value;
+                if (CargoHold[cargo.Label] == 0)
+                {
+                    CargoHold.Remove(cargo.Label);
+                }
+                int totalRevenue = cargo.Value * pricePerUnit;
+                credits += totalRevenue;
+            }
+            else
+            {
+                throw new InsufficientCargo();
+            }
+        }
+
         public void AddCargo(LabeledValue<int> cargo)
         {
             if (CargoHold.ContainsKey(cargo.Label))
             {
-                CargoHold[cargo.Label] += cargo.Quantity;
+                CargoHold[cargo.Label] += cargo.Value;
             }
             else
             {
-                CargoHold.Add(cargo.Label, cargo.Quantity);
+                CargoHold.Add(cargo.Label, cargo.Value);
             }
         }
         public void RemoveCargo(LabeledValue<int> cargo)
         {
             if (CargoHold.ContainsKey(cargo.Label))
             {
-                CargoHold[cargo.Label] -= cargo.Quantity;
+                CargoHold[cargo.Label] -= cargo.Value;
                 if (CargoHold[cargo.Label] <= 0)
                 {
                     CargoHold.Remove(cargo.Label);
+                    return;
                 }
             }
-            else
+            throw new InsufficientCargo(); // Either no cargo of this type, or not enough. Either way, same issue, same answer.
+        }
+        public void TrySpend(int cost)
+        {
+            if(credits >= cost)
             {
-                throw new Exception($"Cargo {cargo.Label} not found in hold.");
+                credits -= cost;
+            }
+            else
+            { 
+                throw new InsufficientCredits();
             }
         }
-        public void Refuel(int amount)
-        {
-            Fuel += amount;
-        }
-        public bool TryJump(Point destination)
+
+        public void TryJump(Point destination)
         { 
+            if (destination == Position)
+                throw new InvalidJump();
             Vector2 jumpVector = new Vector2(destination.X - Position.X, destination.Y - Position.Y);
-            int fuelCost = jumpVector.Length() > 0 ? (int)Math.Ceiling(jumpVector.Length()) : 1; // Ensure at least 1 fuel is used for a jump
+            int fuelCost = (int)Math.Ceiling(jumpVector.Length()); // Fuel cost is the Euclidean distance rounded up
             if (Fuel >= fuelCost)
             {
                 Position = destination;
                 Fuel -= fuelCost;
-                return true;
+                return;
             }
             else
             {
-                return false;
+                throw new OutOfFuel();
             }
         }
 
@@ -89,9 +132,20 @@ namespace EcoSim.Ships
             return sb.ToString();
         }
 
-        internal bool TryJump(Point position, int v)
+        public void Draw(StringBuilder oString)
         {
-            throw new NotImplementedException();
+            oString.AppendLine($"Ship Name: {Name}");
+            oString.AppendLine($"Fuel: {Fuel}");
+            oString.AppendLine($"Credits: {credits}");
+        }
+
+        public void DrawCargo(StringBuilder oString)
+        {
+            oString.AppendLine("Cargo Hold:");
+            foreach (var cargo in CargoHold)
+            {
+                oString.AppendLine($"  {cargo.Key}: {cargo.Value}");
+            }
         }
     }
 }

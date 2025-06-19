@@ -8,31 +8,31 @@ namespace EcoSim.Objects
     public readonly struct LabeledValue<T> where T : INumber<T>, IComparable<T>, IEquatable<T>
     {
         public string Label { get; }
-        public T Quantity { get; } // Negatives permitted, i.e., costs or debts.
+        public T Value { get; } // Negatives permitted, i.e., costs or debts.
 
         public LabeledValue(string label, T quantity)
         {
             if (string.IsNullOrWhiteSpace(label))
                 throw new ArgumentException("Label cannot be null or whitespace.", nameof(label));
             Label = label;
-            Quantity = quantity;
+            Value = quantity;
         }
 
-        public LabeledValue<T> Abs() => new LabeledValue<T>(Label, T.Abs(Quantity));
+        public LabeledValue<T> Abs() => new LabeledValue<T>(Label, T.Abs(Value));
 
         public LabeledValue<T> WithQuantity(T newQuantity)
         {
             return new LabeledValue<T>(Label, newQuantity);
         }
 
-        public bool IsEmpty => Quantity == T.Zero;
-        public bool IsPositive => Quantity > T.Zero;
-        public bool IsNegative => Quantity < T.Zero;
+        public bool IsEmpty => Value == T.Zero;
+        public bool IsPositive => Value > T.Zero;
+        public bool IsNegative => Value < T.Zero;
 
         // --- Conversion Operators ---
 
         // Implicit conversion from LabeledValue<T> to T (extracts the raw quantity)
-        public static implicit operator T(LabeledValue<T> labeledValue) => labeledValue.Quantity;
+        public static implicit operator T(LabeledValue<T> labeledValue) => labeledValue.Value;
 
         // Explicit conversion from T to LabeledValue<T> (requires an explicit cast because Label is lost)
         // This is tricky as the Label is lost. Consider if this makes sense for your domain.
@@ -44,7 +44,7 @@ namespace EcoSim.Objects
 
         public static LabeledValue<T> operator -(LabeledValue<T> a)
         {
-            return new LabeledValue<T>(a.Label, -a.Quantity);
+            return new LabeledValue<T>(a.Label, -a.Value);
         }
 
         // --- Binary Operators (LabeledValue<T> vs T) ---
@@ -52,31 +52,31 @@ namespace EcoSim.Objects
         // Add LabeledValue<T> and T (returns LabeledValue<T>)
         public static LabeledValue<T> operator +(LabeledValue<T> a, T quantity)
         {
-            return new LabeledValue<T>(a.Label, a.Quantity + quantity);
+            return new LabeledValue<T>(a.Label, a.Value + quantity);
         }
         public static LabeledValue<T> operator +(T quantity, LabeledValue<T> a)
         {
-            return new LabeledValue<T>(a.Label, quantity + a.Quantity);
+            return new LabeledValue<T>(a.Label, quantity + a.Value);
         }
 
         // Subtract LabeledValue<T> and T (returns LabeledValue<T>)
         public static LabeledValue<T> operator -(LabeledValue<T> a, T quantity)
         {
-            return new LabeledValue<T>(a.Label, a.Quantity - quantity);
+            return new LabeledValue<T>(a.Label, a.Value - quantity);
         }
         public static LabeledValue<T> operator -(T quantity, LabeledValue<T> a)
         {
-            return new LabeledValue<T>(a.Label, quantity - a.Quantity);
+            return new LabeledValue<T>(a.Label, quantity - a.Value);
         }
 
         // Multiply LabeledValue<T> and T (returns LabeledValue<T>)
         public static LabeledValue<T> operator *(LabeledValue<T> a, T multiplier)
         {
-            return new LabeledValue<T>(a.Label, a.Quantity * multiplier);
+            return new LabeledValue<T>(a.Label, a.Value * multiplier);
         }
         public static LabeledValue<T> operator *(T multiplier, LabeledValue<T> a)
         {
-            return new LabeledValue<T>(a.Label, multiplier * a.Quantity);
+            return new LabeledValue<T>(a.Label, multiplier * a.Value);
         }
 
         // Divide LabeledValue<T> and T (returns LabeledValue<T>)
@@ -84,7 +84,7 @@ namespace EcoSim.Objects
         {
             if (divisor == T.Zero)
                 throw new DivideByZeroException();
-            return new LabeledValue<T>(a.Label, a.Quantity / divisor);
+            return new LabeledValue<T>(a.Label, a.Value / divisor);
         }
 
         // --- Binary Operators (LabeledValue<T> vs LabeledValue<T>) ---
@@ -94,7 +94,7 @@ namespace EcoSim.Objects
         {
             if (a.Label != b.Label)
                 throw new InvalidOperationException($"Cannot add labeled values with different labels: '{a.Label}' and '{b.Label}'.");
-            return a + b.Quantity; // Uses the LabeledValue<T> + T operator
+            return a + b.Value; // Uses the LabeledValue<T> + T operator
         }
 
         // Subtract two LabeledValue<T> (requires matching labels, returns LabeledValue<T>)
@@ -102,7 +102,7 @@ namespace EcoSim.Objects
         {
             if (a.Label != b.Label)
                 throw new InvalidOperationException($"Cannot subtract labeled values with different labels: '{a.Label}' and '{b.Label}'.");
-            return new LabeledValue<T>(a.Label, a.Quantity - b.Quantity);
+            return new LabeledValue<T>(a.Label, a.Value - b.Value);
         }
 
         // --- Equality Comparison ---
@@ -110,7 +110,7 @@ namespace EcoSim.Objects
         // Equality checks for both label and quantity
         public static bool operator ==(LabeledValue<T> a, LabeledValue<T> b)
         {
-            return a.Label == b.Label && a.Quantity.Equals(b.Quantity);
+            return a.Label == b.Label && a.Value.Equals(b.Value);
         }
         public static bool operator !=(LabeledValue<T> a, LabeledValue<T> b)
         {
@@ -124,19 +124,19 @@ namespace EcoSim.Objects
 
         public override string ToString()
         {
-            return $"{Label}: {Quantity}";
+            return $"{Label}: {Value}";
         }
 
         public override bool Equals(object? obj)
         {
             if (obj is LabeledValue<T> other)
             {
-                return Label == other.Label && Quantity.Equals(other.Quantity);
+                return Label == other.Label && Value.Equals(other.Value);
             }
             return false;
         }
 
-        public override int GetHashCode() => HashCode.Combine(Label, Quantity);
+        public override int GetHashCode() => HashCode.Combine(Label, Value);
 
         public LabeledValue<T> WithValue(T value)
         {

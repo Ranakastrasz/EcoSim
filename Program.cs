@@ -1,10 +1,13 @@
 ﻿
+using EcoSim.Interfaces;
 using EcoSim.Objects;
-using System.Numerics;
 using EcoSim.Planet;
 using EcoSim.Ships;
-using EcoSim.Interfaces;
 using System.Drawing;
+using System.IO;
+using System.Linq.Expressions;
+using System.Numerics;
+using System.Text;
 
 namespace EcoSim
 {
@@ -15,6 +18,10 @@ namespace EcoSim
             Console.WriteLine("Welcome to EcoSim!");
             Console.WriteLine("Type 'exit' to quit the simulation.");
             Console.WriteLine("Type 'ship' to simulate a ship, or 'planet' to simulate a planet.");
+
+
+
+
             string? input = Console.ReadLine()?.ToLower();
             
             if(input == "exit")
@@ -33,6 +40,21 @@ namespace EcoSim
             }
         }
 
+        record ConsoleCommand(string Name, string[] Args);
+
+        static ConsoleCommand GetConsoleCommand()
+        {
+            string input = Console.ReadLine()?.ToLower() ?? "";
+            string[] parts = input.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            return parts.Length == 0
+                ? new ConsoleCommand("", Array.Empty<string>())
+                : new ConsoleCommand(parts[0], parts.Skip(1).ToArray());
+        }
+        static bool TryGetIntArg(string[] args, int index, out int result)
+        {
+            result = 0;
+            return args.Length > index && int.TryParse(args[index], out result);
+        }
         static internal void ShipSim()
         { 
             Ship ship = new("SS Enterprise", new(0,0), 10, 1000);
@@ -43,7 +65,7 @@ namespace EcoSim
                 { "mars", new DummyPlanet("Mars", new Point(4, 0)) },
                 { "venus", new DummyPlanet("Venus", new Point(2, 3)) }
             };
-
+            // Crappy manual prefabs. But, resource types are mutable, so eh.
             planets["earth"].AddPrice("Food", 10);
             planets["earth"].AddPrice("Fuel", 5);
             planets["earth"].AddPrice("Minerals", 15);
@@ -55,49 +77,141 @@ namespace EcoSim
             planets["venus"].AddPrice("Food", 8);
             planets["venus"].AddPrice("Fuel", 4);
             planets["venus"].AddPrice("Minerals", 10);
-
-            while (true)
+            
+            while (true) // Main Sim Loop.
             {
-                String oString = ship.ToString() + "\n";
+                StringBuilder oString = new();
+                // First, draw current state.
+                ship.Draw(oString);
+                ship.DrawCargo(oString);
+
                 DummyPlanet? currentPlanet = planets.Values.FirstOrDefault(p => p.Position == ship.Position);
+                // Currently, you are always at a planet, at least theoretically. But ship knows its location, not it's planet.
 
                 foreach (DummyPlanet? planet in planets.Values)
                 {
-                    oString += planet.ToString() + "\n";
+                    planet.Draw(oString);
                 }
 
-                Console.WriteLine(oString);
-                Console.WriteLine("Enter command (refuel, jump, market, exit):");
-                // Wait for user input to continue
-                string iString = Console.ReadLine()?.ToLower() ?? "";
-
-                if(iString == "exit")
-                    break;
-                if(iString == "jump")
+                oString.Append("---------------------------------------------------");
+                // Next, wait for user input.
+                oString.Append("Enter command (jump, market, exit):");
+                // Need to tell users extra arguments. Jump {Planet Name}, Market opens a menu, kinda.
+                while(true)
                 {
-                    Console.WriteLine("Enter Destination:");
-                    iString = Console.ReadLine()?.ToLower() ?? "";
-                    DummyPlanet? destination = planets.GetValueOrDefault(iString);
-                    if (destination == null)
+                    // Wait for user input to continue
+                    Console.WriteLine(oString);
+                    ConsoleCommand command = GetConsoleCommand();
+
+                    if(command.Name == "exit")
+                        break;
+                    // End sim.
+                    if(command.Name == "jump")
                     {
-                        Console.WriteLine("Invalid destination.");
-                        continue;
+                        string destinationString = command.Args[0] ?? "";
+
+                        
+                            Console.WriteLine(oString);
+
+                            command = GetConsoleCommand();
+                        
+                            if (destinationString == "back")
+                                break;
+
+                            destinationString = destinationString.ToLower();
+                            break;
+                        }
+                        if (destinationString == "back") // A planet named back would break this.
+                            continue;
+
+                        // Would want to do coordinates here too. But for now, don't bother. Just direct planet only.
+                        // Probably check for "{int},{int}" or something.
+
+                        // Right now, destination is a planet, and we get the position from that.
+                        DummyPlanet? destination = planets.GetValueOrDefault(destinationString);
+                        if (destination == null)
+                        {
+                            Console.WriteLine("Invalid destination.");
+                            continue;
+                        }
+                        try
+                        {
+                            ship.TryJump(destination.Position);
+                            Console.WriteLine($"Jump to {destination.Name} Successful.");
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine(ex.Message); // good enough for now.
+                        }
                     }
-                    if (ship.TryJump(destination.Position)) // Assuming 10 is the fuel cost for a jump
+                    else if (command.Name == "market")
                     {
-                        Console.WriteLine($"Jumped to {destination.Name} at position {destination.Position}.");
-                    }
-                    else
-                    {
-                        Console.WriteLine("Not enough fuel to jump.");
+                        // Enter market. First. draw stuff.
+                    
+                        if(currentPlanet != null)
+                        {
+                            oString = new();
+                            ship.Draw(oString);
+                            ship.DrawCargo(oString);
+                            currentPlanet.Draw(oString);
+                            currentPlanet.DrawMarket(oString);
+                        }
+                        else
+                        {// Really, should be a catch, where I call "GetMarket(Position)
+                            Console.WriteLine($"No Planet at {ship.Position} ");
+                            continue;
+                        }
+                        while (true)
+                        {
+                            oString.Append("Enter command (buy, sell, back):");
+                            Console.WriteLine(oString);
+
+                            command = GetConsoleCommand();
+                            if (command.Name == "back")
+                                break;
+                    
+                            string itemType = command.Args[0] ?? "";
+                            if (!TryGetIntArg(command.Args,1,out int itemQuantity) || itemType == "")
+                            {
+                                Console.WriteLine($"");
+                                continue;
+                            }
+                            if (itemQuantity <= 0)
+                            { 
+                                Console.WriteLine($"Invalid Quantity {itemQuantity}");
+                                continue;
+                            }
+                            LabeledValue<int> cargoStack = new(itemType, itemQuantity);
+                    
+                            LabeledValue<int>? marketEntry = currentPlanet.PriceMap.Find(p => p.Label == itemType);
+                            if (marketEntry == null)
+                            {
+                                Console.WriteLine($"Item type {itemType} does not exist in the Market");
+                                continue;
+                            }
+                            // Everything should be valid, item and quanity wise.
+
+                            if (command.Name == "buy")
+                            {
+                                ship.TryBuyCargo(cargoStack,marketEntry.Value);
+                                break;
+                            }
+                            else if (command.Name == "sell")
+                            { 
+                                ship.TrySellCargo(cargoStack,marketEntry.Value);
+                                break;
+                            }
+                            else
+                            {
+                                Console.WriteLine("Invalid Command");
+                            }
+                        }
                     }
                 }
                 Console.WriteLine("---------------------------------------------------");
                 Console.WriteLine("Press Enter to Continue");
                 Console.ReadLine();
             }   
-            
-
         }
 
         static internal void PlanetSim()
@@ -137,7 +251,7 @@ namespace EcoSim
                 Console.WriteLine($"Population: {earth.Population}");
                 Console.WriteLine($"Unemployed Population: {earth.UnemployedPopulation}");
                 Console.WriteLine($"Resource Deposits: {string.Join(", ", earth.NaturalResources.Select(kv => $"{kv.Key}: {kv.Value.AvailableDeposits}/{kv.Value.TotalDeposits}"))}");
-                Console.WriteLine($"Resource Stockpiles: {string.Join(", ", earth.Stockpiles.Select(kv => $"{kv.Key}: {kv.Value.Quantity}"))}");
+                Console.WriteLine($"Resource Stockpiles: {string.Join(", ", earth.Stockpiles.Select(kv => $"{kv.Key}: {kv.Value.Value}"))}");
                 Console.WriteLine($"Job Sectors: {string.Join(", ", earth.JobSectors.Select(kv => $"{kv.Key}: {kv.Value.Workers}/{kv.Value.JobSlots}"))}");
                 Console.WriteLine($"Districts: {string.Join(", ", earth.Districts.Select(kv => $"{kv.Key}: {kv.Value.TotalSize}"))}");
                 Console.WriteLine("--------------------------------------------------");

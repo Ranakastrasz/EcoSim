@@ -5,6 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using EcoSim.Interfaces;
+using EcoSim.Objects;
 
 namespace EcoSim.Planet
 {
@@ -14,7 +15,7 @@ namespace EcoSim.Planet
     {
         public string Name {get; private set;} = "";
         public Point Position {get; set;}
-        public List<Tuple<string, int>> PriceMap {get; private set;}= new();
+        public List<LabeledValue<int>> PriceMap {get; private set;}= new();
 
         public DummyPlanet(string name, Point position)
         {
@@ -24,19 +25,29 @@ namespace EcoSim.Planet
 
         public void AddPrice(string resource, int price)
         {
-            PriceMap.Add(new Tuple<string, int>(resource, price));
+            PriceMap.Add(new LabeledValue<int>(resource, price));
         }
 
         public override string ToString()
         {
-            StringBuilder sb = new StringBuilder();
-            sb.AppendLine($"Planet: {Name} at {Position}");
-            sb.AppendLine("Prices:");
+            StringBuilder oString = new StringBuilder();
+            Draw(oString);
+            DrawMarket(oString);
+            return oString.ToString();
+        }
+
+        internal void Draw(StringBuilder oString)
+        {
+            oString.AppendLine($"Planet: {Name} at {Position}");
+        }
+
+        internal void DrawMarket(StringBuilder oString)
+        {
+            oString.AppendLine("Prices:");
             foreach (var price in PriceMap)
             {
-                sb.AppendLine($"{price.Item1}: {price.Item2} credits");
+                oString.AppendLine($"{price.Label}: {price.Value} credits");
             }
-            return sb.ToString();
         }
     }
 }
