@@ -1,9 +1,11 @@
-﻿using EcoSim.Objects;
+﻿using EcoSim.IO;
+using EcoSim.Objects;
 using EcoSim.Planet;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reflection.Metadata.Ecma335;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -11,9 +13,9 @@ namespace EcoSim.Simulations
 {
     internal class SinglePlanetSim
     {
-        public SmartPlanet Planet {get; private set; }
+        public SimplePlanet Planet {get; private set; }
 
-        public SinglePlanetSim(SmartPlanet planet)
+        public SinglePlanetSim(SimplePlanet planet)
         {
 
             Planet = planet;
@@ -21,53 +23,215 @@ namespace EcoSim.Simulations
             // Food, Energy, Minerals are the only raw resources.
             // Later, strategic resources may be added
             // Produced resources like Metal, Alloy, Consumer Goods, Tools, but we need upkeep and factory jobs for those.
-            
-            NaturalResource mineralNode = new ("Mineral Deposit",12);
-            NaturalResource energyNode  = new ("Coal Deposit",6);
-            NaturalResource foodNode    = new ("Fertile Land",8);
-            
-            planet.AddNaturalResource(mineralNode);
-            planet.AddNaturalResource(energyNode);
-            planet.AddNaturalResource(foodNode);
 
-            Job mineralWorker = new Job("Miner"     ,new("Minerals" ,4),new("Energy",1));
-            Job energyWorker  = new Job("Technician",new("Energy"   ,4),new("Food"  ,1));
-            Job foodWorker    = new Job("Farmer"    ,new("Food"     ,4),new("Energy",1));
+            //NaturalResource mineralNode = new ("Mineral Deposit",12);
+            //NaturalResource energyNode  = new ("Coal Deposit",6);
+            //NaturalResource foodNode    = new ("Fertile Land",8);
 
-            LabeledValue<int> districtCost = new("Minerals",50);
+            //planet.AddNaturalResource(mineralNode);
+            //planet.AddNaturalResource(energyNode);
+            //planet.AddNaturalResource(foodNode);
+            var mineralWorker = new Jobtype("Miner",
+                new []{new Labeled<float>("Minerals", 4) },
+                new []{new Labeled<float>("Energy"  , 1) });
 
-            List<District> districts = new();
-            districts.Add(new District("Mining District",mineralWorker  ,districtCost,mineralNode));
-            districts.Add(new District("Energy District",energyWorker   ,districtCost,energyNode));
-            districts.Add(new District("Food District"  ,foodWorker     ,districtCost,foodNode));
+            var energyWorker = new Jobtype("Technician",
+                new []{new Labeled<float>("Energy", 4)},
+                new []{new Labeled<float>("Food"  , 1)});
+
+            var foodWorker = new Jobtype("Farmer",
+                new []{new Labeled<float>("Food", 4) },
+                new []{new Labeled<float>("Energy"  , 1) });
+
+            //Job mineralWorker = new Job("Miner"     ,{new Labeled<float>("Minerals" ,4) },new Labeled<float>("Energy",1));
+
+            //Job energyWorker  = new Job("Technician",new("Energy"   ,4),new("Food"  ,1));
+            //Job foodWorker    = new Job("Farmer"    ,new("Food"     ,4),new("Energy",1));
+
+            Labeled<int> districtCost = new("Minerals",50);
+
+            List<DistrictStack> districts = new();
+            districts.Add(new District("Mining District", mineralWorker, districtCost));//mineralNode));
+            districts.Add(new District("Energy District", energyWorker, districtCost));//energyNode));
+            districts.Add(new District("Food District", foodWorker, districtCost));//foodNode));
 
 
             planet.AddDistricts(districts);
-            planet.AddToDistrict(planet.Districts["Mining District"],1); // not the best way, but eh.
-            planet.AddToDistrict(planet.Districts["Energy District"],1);
-            planet.AddToDistrict(planet.Districts["Food District"],1);
+            planet.AddDistrict(planet.Districts["Mining District"], 1); // not the best way, but eh.
+            planet.AddDistrict(planet.Districts["Energy District"], 1);
+            planet.AddDistrict(planet.Districts["Food District"], 1);
 
+            List<Labeled<float>> stockpiles = new();
+            stockpiles.Add(new("Minerals", 50));
+            stockpiles.Add(new("Energy", 50));
+            stockpiles.Add(new("Food", 50));
 
+            planet.AddStockpiles(stockpiles);
 
         }
+        enum State
+        {
+            Error,
+            Draw,
+            Input,
+            Update,
+            Exit
+        }
+
+        State state;
         internal void PlanetSim()
-        { 
-
-
+        {
+            state = State.Draw;
             while (true)
             {
-                Planet.Update();
-                //Console.WriteLine($"Population: {Planet.Population}");
-                //Console.WriteLine($"Unemployed Population: {Planet.UnemployedPopulation}");
-                Console.WriteLine($"Resource Deposits: {string.Join(", ", Planet.NaturalResources.Select(kv => $"{kv.Key}: {kv.Value.AvailableDeposits}/{kv.Value.TotalDeposits}"))}");
-                Console.WriteLine($"Resource Stockpiles: {string.Join(", ", Planet.Stockpiles.Select(kv => $"{kv.Key}: {kv.Value.Value}"))}");
-                Console.WriteLine($"Job Sectors: {string.Join(", ", Planet.JobSectors.Select(kv => $"{kv.Key}: {kv.Value.Workers}/{kv.Value.JobSlots}"))}");
-                Console.WriteLine($"Districts: {string.Join(", ", Planet.Districts.Select(kv => $"{kv.Key}: {kv.Value.Size}"))}");
-                Console.WriteLine("--------------------------------------------------");
-                // Wait for user input to continue
-                if(Console.ReadLine() == "exit")
-                    break;
+                try
+                {
+                    switch(state)
+                    {
+
+                        case State.Draw:
+                        {
+                            Draw();
+                            state = State.Input;
+                            break;
+                        }
+                        case State.Input:
+                        {
+                            // Draw input request.
+
+                            GetInput(out State newState);
+                            state = newState;
+                            break;
+                        }
+                        case State.Update:
+                        {
+                            Update();
+                            state = State.Draw;
+                            break;
+                        }
+                        case State.Exit:
+                        {
+                            return;
+                        }
+                        case State.Error:
+                        {
+                            throw new Exception("Invalid Planet State");
+                            
+                        }
+                        default:
+                        {
+                            return;
+                        }
+                    }
+                }
+                catch(Exception e)
+                {
+                    Console.WriteLine(e.ToString());
+                    state = State.Input;
+                }
             }   
+        }
+        internal void Update()
+        {
+
+            Planet.Update();
+
+            Console.WriteLine("--------------------------------------------------");
+         }
+
+        internal void Draw()
+        {
+            // Features currently disabled.
+
+            //Console.WriteLine($"Population: {Planet.Population}");
+            //Console.WriteLine($"Unemployed Population: {Planet.UnemployedPopulation}");
+            //Console.WriteLine($"Resource Deposits: {string.Join(", ", Planet.NaturalResources.Select(kv => $"{kv.Key}: {kv.Value.AvailableDeposits}/{kv.Value.TotalDeposits}"))}");
+
+            // This one should be Stockpile.Draw or something
+            Console.WriteLine($"Resource Stockpiles: {string.Join(", ", Planet.Stockpiles.Items.Select(kv => $"{kv.Key}: {kv.Value}"))}");
+            // Same with the rest, really. 
+            Console.WriteLine($"Job Sectors: {string.Join(", ", Planet.JobSectors.Select(kv => $"{kv.Key}: {kv.Value.Workers}/{kv.Value.Jobs}"))}");
+            Console.WriteLine($"Districts  : {string.Join(", ", Planet.Districts.Select(kv => $"{kv.Key}: {kv.Value.Size}"))}");
+        }
+        private void GetInput(out State newState)
+        {
+            ConsoleCommand command = ConsoleCommand.GetInput();
+            if(command.IsCommand("Continue"))
+            {
+                newState = State.Update;
+                return;
+            }
+            else if(command.IsCommand("Exit"))
+            {
+                newState = State.Exit;
+                return;
+            }
+            else if(command.IsCommand("Job")) // Job Miner add 3, Or, Job.Miner.Add(3), I suppose.
+            {
+                // Invalid key breaks the whole thing.
+                command.GetArg(0, out var keyArg);
+                if(!Planet.JobSectors.ContainsKey(keyArg))
+                    throw new KeyNotFoundException();
+
+                // What to do with it. 
+                command.GetArg(1, out var actionArg);
+                string valueArg = "";
+                try
+                {
+                    command.GetArg(2, out valueArg);
+                }
+                catch
+                {
+                }
+
+                if(!float.TryParse(valueArg, out float value))
+                    value = float.PositiveInfinity;
+
+
+                if(actionArg.Equals("add"))
+                {
+                }
+                else if(actionArg.Equals("remove"))
+                {
+                    value = -value;
+                }
+                else
+                {
+                    throw new ArgumentNullException(actionArg);
+                }
+
+                try
+                {
+                    Planet.TryAssignJobs(keyArg, (int)value);
+                }
+                catch(Exception e)
+                {
+                    if(e.Message != "Insufficient Job Slots") // Should be defined in the JobManager or JobSector class instead. But works for now.
+                    {
+                        throw new Exception(e.Message, e);
+                    }
+                    else
+                    {
+                        Console.WriteLine(e.Message); // Not ideal. But eh.
+                    }
+                }
+                newState = State.Draw;
+                return;
+            }
+            else if(command.IsCommand("District"))
+            {
+                Console.WriteLine("Not yet implemented");
+                // Try District command.
+                newState = State.Input;
+                return;
+            }
+            else
+            {
+                Console.WriteLine($"Command {command.Name} not recognized");
+                newState = State.Input;
+                return;
+            }
+            newState = State.Error;
         }
     }
 }

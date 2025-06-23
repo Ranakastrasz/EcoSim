@@ -15,7 +15,7 @@ namespace EcoSim.Planet
     {
         public string Name {get; private set;} = "";
         public Point Position {get; set;}
-        public List<LabeledValue<int>> PriceMap {get; private set;}= new();
+        public List<Labeled<int>> PriceMap {get; private set;}= new();
 
         public DummyPlanet(string name, Point position)
         {
@@ -25,7 +25,7 @@ namespace EcoSim.Planet
 
         public void AddPrice(string resource, int price)
         {
-            PriceMap.Add(new LabeledValue<int>(resource, price));
+            PriceMap.Add(new Labeled<int>(resource, price));
         }
 
         public override string ToString()
@@ -46,7 +46,7 @@ namespace EcoSim.Planet
             oString.AppendLine("Prices:");
             foreach (var price in PriceMap)
             {
-                oString.AppendLine($"{price.Label}: {price.Value} credits");
+                oString.AppendLine($"{price.Key}: {price.Value} credits");
             }
         }
     }

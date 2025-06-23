@@ -1,5 +1,6 @@
 ﻿
 using EcoSim.Interfaces;
+using EcoSim.IO;
 using EcoSim.Objects;
 using EcoSim.Planet;
 using EcoSim.Ships;
@@ -24,7 +25,6 @@ namespace EcoSim
 
 
             string? input = Console.ReadLine()?.ToLower();
-            
             if(input == "exit")
                 return;
             if(input == "planet")
@@ -42,21 +42,6 @@ namespace EcoSim
             }
         }
 
-        record ConsoleCommand(string Name, string[] Args);
-
-        static ConsoleCommand GetConsoleCommand()
-        {
-            string input = Console.ReadLine()?.ToLower() ?? "";
-            string[] parts = input.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-            return parts.Length == 0
-                ? new ConsoleCommand("", Array.Empty<string>())
-                : new ConsoleCommand(parts[0], parts.Skip(1).ToArray());
-        }
-        static bool TryGetIntArg(string[] args, int index, out int result)
-        {
-            result = 0;
-            return args.Length > index && int.TryParse(args[index], out result);
-        }
         static internal void ShipSim()
         { 
             Ship ship = new("SS Enterprise", new(0,0), 10, 1000);
@@ -103,7 +88,7 @@ namespace EcoSim
                 {
                     // Wait for user input to continue
                     Console.WriteLine(oString);
-                    ConsoleCommand command = GetConsoleCommand();
+                    ConsoleCommand command = ConsoleCommand.GetInput();
 
                     if(command.Name == "exit")
                         break;
@@ -153,12 +138,12 @@ namespace EcoSim
                             oString.Append("Enter command (buy, sell, back):");
                             Console.WriteLine(oString);
 
-                            command = GetConsoleCommand();
+                            command = ConsoleCommand.GetInput();
                             if (command.Name == "back")
                                 break;
                     
                             string itemType = command.Args[0] ?? "";
-                            if (!TryGetIntArg(command.Args,1,out int itemQuantity) || itemType == "")
+                            if (!ConsoleCommand.TryGetIntArg(command.Args,1,out int itemQuantity) || itemType == "")
                             {
                                 Console.WriteLine($"");
                                 continue;
@@ -168,9 +153,9 @@ namespace EcoSim
                                 Console.WriteLine($"Invalid Quantity {itemQuantity}");
                                 continue;
                             }
-                            LabeledValue<int> cargoStack = new(itemType, itemQuantity);
+                            Labeled<int> cargoStack = new(itemType, itemQuantity);
                     
-                            LabeledValue<int>? marketEntry = currentPlanet.PriceMap.Find(p => p.Label == itemType);
+                            Labeled<int>? marketEntry = currentPlanet.PriceMap.Find(p => p.Key == itemType);
                             if (marketEntry == null)
                             {
                                 Console.WriteLine($"Item type {itemType} does not exist in the Market");

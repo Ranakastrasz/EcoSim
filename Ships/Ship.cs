@@ -33,7 +33,7 @@ namespace EcoSim.Ships
             this.credits = credits;
         }
 
-        public void TryBuyCargo(LabeledValue<int> cargo, int pricePerUnit)
+        public void TryBuyCargo(Labeled<int> cargo, int pricePerUnit)
         {
             int totalCost = cargo.Value * pricePerUnit;
             if (credits >= totalCost)
@@ -46,14 +46,14 @@ namespace EcoSim.Ships
                 throw new InsufficientCredits();
             }
         }
-        public void TrySellCargo(LabeledValue<int> cargo, int pricePerUnit)
+        public void TrySellCargo(Labeled<int> cargo, int pricePerUnit)
         {
-            if (CargoHold.ContainsKey(cargo.Label) && CargoHold[cargo.Label] >= cargo.Value)
+            if (CargoHold.ContainsKey(cargo.Key) && CargoHold[cargo.Key] >= cargo.Value)
             {
-                CargoHold[cargo.Label] -= cargo.Value;
-                if (CargoHold[cargo.Label] == 0)
+                CargoHold[cargo.Key] -= cargo.Value;
+                if (CargoHold[cargo.Key] == 0)
                 {
-                    CargoHold.Remove(cargo.Label);
+                    CargoHold.Remove(cargo.Key);
                 }
                 int totalRevenue = cargo.Value * pricePerUnit;
                 credits += totalRevenue;
@@ -64,25 +64,25 @@ namespace EcoSim.Ships
             }
         }
 
-        public void AddCargo(LabeledValue<int> cargo)
+        public void AddCargo(Labeled<int> cargo)
         {
-            if (CargoHold.ContainsKey(cargo.Label))
+            if (CargoHold.ContainsKey(cargo.Key))
             {
-                CargoHold[cargo.Label] += cargo.Value;
+                CargoHold[cargo.Key] += cargo.Value;
             }
             else
             {
-                CargoHold.Add(cargo.Label, cargo.Value);
+                CargoHold.Add(cargo.Key, cargo.Value);
             }
         }
-        public void RemoveCargo(LabeledValue<int> cargo)
+        public void RemoveCargo(Labeled<int> cargo)
         {
-            if (CargoHold.ContainsKey(cargo.Label))
+            if (CargoHold.ContainsKey(cargo.Key))
             {
-                CargoHold[cargo.Label] -= cargo.Value;
-                if (CargoHold[cargo.Label] <= 0)
+                CargoHold[cargo.Key] -= cargo.Value;
+                if (CargoHold[cargo.Key] <= 0)
                 {
-                    CargoHold.Remove(cargo.Label);
+                    CargoHold.Remove(cargo.Key);
                     return;
                 }
             }

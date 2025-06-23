@@ -11,6 +11,6 @@ namespace EcoSim.Interfaces
     internal interface IMarket
     {
         string Name {get; }
-        List<LabeledValue<int>> PriceMap {get;}
+        List<Labeled<int>> PriceMap {get;}
     }
 }
