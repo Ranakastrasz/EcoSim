@@ -7,13 +7,13 @@
         public int TotalDeposits { get; set; } // How many deposits exist
         public int AvailableDeposits { get; set; } // How many deposits are currently available for jobs
 
-        public Job Job { get; set; } // The job that this provides.
-        public NaturalResource(string name, int deposits, Job job)
+        //public Job Job { get; set; } // The job that this provides.
+        public NaturalResource(string name, int deposits/*, Job job*/)
         {
             Name = name;
             TotalDeposits = deposits;
             AvailableDeposits = deposits;
-            Job = job;
+            //Job = job;
         }
         // At most, maybe it talks to the District
     }

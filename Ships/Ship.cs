@@ -135,6 +135,7 @@ namespace EcoSim.Ships
         public void Draw(StringBuilder oString)
         {
             oString.AppendLine($"Ship Name: {Name}");
+            oString.AppendLine($"Position: {Position.X}:{Position.Y}");
             oString.AppendLine($"Fuel: {Fuel}");
             oString.AppendLine($"Credits: {credits}");
         }

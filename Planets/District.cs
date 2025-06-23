@@ -1,16 +1,42 @@
-﻿namespace EcoSim.Planet
+﻿using EcoSim.Objects;
+
+namespace EcoSim.Planet
 {
     public class District
     {
-        public int TotalSize { get; set; } // How many deposits are being exploited
+        public string Name { get; private set; }
+        public NaturalResource? Resource { get; private set; }
+        private int _size;
+        private LabeledValue<int> _price;
 
-        public Job Job { get; set; } // The job that this provides.
-        public District(Job job)
+        public int Size
         {
-            TotalSize = 0;
-            Job = job;
+            get => _size;
+            set
+            {
+                if(value < 0)
+                    throw new ArgumentOutOfRangeException(nameof(Size), "Size cannot be negative.");
+                _size = value;
+            }
         }
-        // Infrastructure. Built on top of the natural resources, and provides a better job than the normal one.
-        // Also removes the natural resource's job from the sector.
+        public LabeledValue<int> Price
+        {
+            get => _price;
+            set
+            {
+                if(value.Value < 0)
+                    throw new ArgumentOutOfRangeException(nameof(Size), "Price cannot be negative.");
+                _price = value;
+            }
+        }
+        public Job Job { get; set; } // The job that this provides.
+        public District(string name, Job job, LabeledValue<int> price, NaturalResource? resource = null)
+        {
+            Size = 0;
+            Name = name;
+            Job = job;
+            Price = price;
+            Resource = resource;
+        }
     }
 }

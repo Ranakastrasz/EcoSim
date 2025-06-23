@@ -3,6 +3,7 @@ using EcoSim.Interfaces;
 using EcoSim.Objects;
 using EcoSim.Planet;
 using EcoSim.Ships;
+using EcoSim.Simulations;
 using System.Drawing;
 using System.IO;
 using System.Linq.Expressions;
@@ -28,7 +29,8 @@ namespace EcoSim
                 return;
             if(input == "planet")
             {
-                PlanetSim();    
+                SinglePlanetSim planetSim = new(new());
+                planetSim.PlanetSim();
             }
             else if(input == "ship")
             {
@@ -109,23 +111,7 @@ namespace EcoSim
                     if(command.Name == "jump")
                     {
                         string destinationString = command.Args[0] ?? "";
-
                         
-                            Console.WriteLine(oString);
-
-                            command = GetConsoleCommand();
-                        
-                            if (destinationString == "back")
-                                break;
-
-                            destinationString = destinationString.ToLower();
-                            break;
-                        }
-                        if (destinationString == "back") // A planet named back would break this.
-                            continue;
-
-                        // Would want to do coordinates here too. But for now, don't bother. Just direct planet only.
-                        // Probably check for "{int},{int}" or something.
 
                         // Right now, destination is a planet, and we get the position from that.
                         DummyPlanet? destination = planets.GetValueOrDefault(destinationString);
@@ -138,6 +124,7 @@ namespace EcoSim
                         {
                             ship.TryJump(destination.Position);
                             Console.WriteLine($"Jump to {destination.Name} Successful.");
+                            break;
                         }
                         catch (Exception ex)
                         {
@@ -211,53 +198,6 @@ namespace EcoSim
                 Console.WriteLine("---------------------------------------------------");
                 Console.WriteLine("Press Enter to Continue");
                 Console.ReadLine();
-            }   
-        }
-
-        static internal void PlanetSim()
-        { 
-
-            SmartPlanet earth = new SmartPlanet();
-            earth.AddPopulation(10); // Initial population
-            // Food, Energy, Minerals are the only raw resources.
-            // Later, strategic resources may be added
-            // Produced resources like Metal, Alloy, Consumer Goods, Tools, but we need upkeep and factory jobs for those.
-            
-
-            earth.AddNaturalResource(new NaturalResource("Ore Deposits",12, new Job("Surface Mining", new LabeledValue<int>("Minerals", 1))));
-            earth.AddNaturalResource(new NaturalResource("Wild Edibles and Foods",8, new Job("Hunter Gathering", new LabeledValue<int>("Food", 2))));
-            
-            // Natural energy is kinda connected to people innately. Job cap is infinite.
-            // This is really more a workshop or something, I dunno. Energy is abstract.
-            // Probably will want to not have this provide a job normally. Or as a job like "Unemployed" 
-            earth.AddJobs(new Job("Manual Labour", new LabeledValue<int>("Energy", 1)), 100);
-
-            // Coal power is a basic power source, but requires upkeep of minerals.
-            earth.AddJobs(new Job("Coal Power", new LabeledValue<int>("Energy", 8), new LabeledValue<int>("Minerals",-3)), 2);
-
-
-            Console.WriteLine($"Planet created with {earth.NaturalResources.Count} resources.");
-
-            //earth.AddJobs(new Job("Energy Production", new Resource("Energy", 1)),4);
-            earth.AssignJobs("Manual Labour", 1);
-            earth.AssignJobs("Surface Mining", 2);
-            earth.AssignJobs("Hunter Gathering", 5);
-            earth.AssignJobs("Coal Power", 1);
-
-
-            while (true)
-            {
-                earth.Update();
-                Console.WriteLine($"Population: {earth.Population}");
-                Console.WriteLine($"Unemployed Population: {earth.UnemployedPopulation}");
-                Console.WriteLine($"Resource Deposits: {string.Join(", ", earth.NaturalResources.Select(kv => $"{kv.Key}: {kv.Value.AvailableDeposits}/{kv.Value.TotalDeposits}"))}");
-                Console.WriteLine($"Resource Stockpiles: {string.Join(", ", earth.Stockpiles.Select(kv => $"{kv.Key}: {kv.Value.Value}"))}");
-                Console.WriteLine($"Job Sectors: {string.Join(", ", earth.JobSectors.Select(kv => $"{kv.Key}: {kv.Value.Workers}/{kv.Value.JobSlots}"))}");
-                Console.WriteLine($"Districts: {string.Join(", ", earth.Districts.Select(kv => $"{kv.Key}: {kv.Value.TotalSize}"))}");
-                Console.WriteLine("--------------------------------------------------");
-                // Wait for user input to continue
-                if(Console.ReadLine() == "exit")
-                    break;
             }   
         }
     }
