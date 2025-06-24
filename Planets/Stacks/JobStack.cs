@@ -4,13 +4,17 @@ using EcoSim.Planets.Definitions;
 using System.Drawing;
 using System.Xml;
 
-namespace EcoSim.Planet
+namespace EcoSim.Planets.Stacks
 {
-    public class JobStack
+    public class JobStack :BaseStack<JobType>
     {
+        public JobType Job { get => BaseType; protected set => BaseType = value; }
+        public IReadOnlyList<Labeled<float>> Inputs => Job.Inputs;
+        public IReadOnlyList<Labeled<float>> Outputs => Job.Outputs;
+
         private int _workers; // How many workers are currently assigned to this job
         private int _jobs;
-        public Jobtype Job { get; private set; }
+
         public int Jobs
         {
             get => _jobs;
@@ -33,9 +37,8 @@ namespace EcoSim.Planet
             }
         }
 
-        public JobStack(Jobtype job)
+        public JobStack(JobType job):base(job)
         {
-            Job = job;
             Jobs = 0;
             Workers = 0;
         }
@@ -66,10 +69,7 @@ namespace EcoSim.Planet
                     foreach(var input in Job.Inputs)
                     {
                         if(jobsToWork > 0)
-                        {
                             inventory.TrySpend(input * jobsToWork); // Technically, doesn't need to try at this point.
-                                                                     // But, Until I can pass an entire List of LabeledValues in, as a delta...
-                        }
                     }
                 }
             }

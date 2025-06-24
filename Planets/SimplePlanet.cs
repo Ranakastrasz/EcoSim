@@ -1,14 +1,16 @@
-﻿using EcoSim.Objects;
+﻿using EcoSim.Extensions;
+using EcoSim.Objects;
 using EcoSim.Planets.Definitions;
+using EcoSim.Planets.Stacks;
 
 
 namespace EcoSim.Planet
 {
     public class SimplePlanet
     { 
-        public Dictionary<string, DistrictStack> Districts               = []; // Districts produce jobs.
-        public Inventory Stockpiles = new ();                             // Essentially a dictionary of Labeled<Float>
-        public Dictionary<string, JobStack> JobSectors             = []; // Jobs, on Update, produce/consume resources.
+        public Dictionary<string, DistrictStack> Districts = []; // Districts produce jobs.
+        public Inventory Stockpiles = new ();               // Essentially a dictionary of Labeled<Float>
+        public Dictionary<string, JobStack> Jobs           = []; // Jobs, on Update, produce/consume resources.
         public int size = 0;
 
         public SimplePlanet()
@@ -28,19 +30,30 @@ namespace EcoSim.Planet
         }
 
         //Both probably need negative handling too, unless I have remove district instead.
-        public void AddDistricts(List<DistrictStack> districts)
+        public void TryAddDistrictTypes(List<DistrictType> districts)
         { 
-            foreach (DistrictStack district in districts)
+            foreach (DistrictType district in districts)
             {
-                AddDistrict(district);
+                TryAddDistrictType(district);
             }
         }
 
-        public void AddDistrict(DistrictStack district, int value = 0)
-        { 
-            // If the item already exists, update its quantity
+        public bool TryAddDistrictType(DistrictType type)
+        {
+            if(!Districts.ContainsKey(type.ID))
+            {
+                Districts[type.ID] = new DistrictStack(type);
+                return true;
+            }
+            return false;
+        }
 
-            if (Districts.ContainsKey(district.Name))
+        public void AddDistrict(DistrictType district, int value)
+        {
+            // If the item already exists, update its quantity
+            Districts.ForceGet(district.ID, () => new DistrictStack(district));
+
+            if(Districts.ContainsKey(district.Name))
             {
                 Districts[district.Name].Size += value;
             }
@@ -58,20 +71,20 @@ namespace EcoSim.Planet
 
 
             // Then, do all the jobs that exist, if plausible.
-            foreach(JobStack sector in JobSectors.Values)
+            foreach(JobStack sector in Jobs.Values)
             {
                 sector.Update(Stockpiles);
             }
         }
-        private void AddJobs(Jobtype job, int quantity)
+        private void AddJobs(JobType job, int quantity)
         {
 
-            if(!JobSectors.TryGetValue(job.id, out var sector))
+            if(!Jobs.TryGetValue(job.ID, out var sector))
             {
                 sector = new JobStack(job);
-                JobSectors.Add(job.id, sector);
+                Jobs.Add(job.ID, sector);
             }
-            JobSectors[job.id].AddJobs(quantity,out int jobsAdded);
+            Jobs[job.ID].AddJobs(quantity,out int jobsAdded);
         }
         public void TryAssignJobs(string name, int quantity, out int workersAdded)
         {
@@ -79,7 +92,7 @@ namespace EcoSim.Planet
             // Probably want a reverse function to unassign jobs too. or let this do negative quantities.
             // Assign workers to the job sector
             name = name.ToLower();
-            var sector = JobSectors[name]; // Includes builtin assert.
+            var sector = Jobs[name]; // Includes builtin assert.
 
             sector.AddWorkers(quantity,out workersAdded);
         }

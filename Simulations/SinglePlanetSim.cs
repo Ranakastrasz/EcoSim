@@ -1,6 +1,7 @@
 ﻿using EcoSim.IO;
 using EcoSim.Objects;
 using EcoSim.Planet;
+using EcoSim.Planets.Definitions;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -31,15 +32,15 @@ namespace EcoSim.Simulations
             //planet.AddNaturalResource(mineralNode);
             //planet.AddNaturalResource(energyNode);
             //planet.AddNaturalResource(foodNode);
-            var mineralWorker = new Jobtype("Miner",
+            var mineralWorker = new JobType("Miner",
                 new []{new Labeled<float>("Minerals", 4) },
                 new []{new Labeled<float>("Energy"  , 1) });
 
-            var energyWorker = new Jobtype("Technician",
+            var energyWorker = new JobType("Technician",
                 new []{new Labeled<float>("Energy", 4)},
                 new []{new Labeled<float>("Food"  , 1)});
 
-            var foodWorker = new Jobtype("Farmer",
+            var foodWorker = new JobType("Farmer",
                 new []{new Labeled<float>("Food", 4) },
                 new []{new Labeled<float>("Energy"  , 1) });
 
@@ -50,16 +51,13 @@ namespace EcoSim.Simulations
 
             Labeled<int> districtCost = new("Minerals",50);
 
-            List<DistrictStack> districts = new();
-            districts.Add(new District("Mining District", mineralWorker, districtCost));//mineralNode));
-            districts.Add(new District("Energy District", energyWorker, districtCost));//energyNode));
-            districts.Add(new District("Food District", foodWorker, districtCost));//foodNode));
+            List<DistrictType> districts = new();
+            districts.Add(new DistrictType("Mining District", mineralWorker ,2, districtCost));//mineralNode));
+            districts.Add(new DistrictType("Energy District", energyWorker  ,2, districtCost));//energyNode));
+            districts.Add(new DistrictType("Food District"  , foodWorker    ,2, districtCost));//foodNode));
 
 
-            planet.AddDistricts(districts);
-            planet.AddDistrict(planet.Districts["Mining District"], 1); // not the best way, but eh.
-            planet.AddDistrict(planet.Districts["Energy District"], 1);
-            planet.AddDistrict(planet.Districts["Food District"], 1);
+            planet.TryAddDistrictTypes(districts);
 
             List<Labeled<float>> stockpiles = new();
             stockpiles.Add(new("Minerals", 50));
@@ -150,7 +148,7 @@ namespace EcoSim.Simulations
             // This one should be Stockpile.Draw or something
             Console.WriteLine($"Resource Stockpiles: {string.Join(", ", Planet.Stockpiles.Items.Select(kv => $"{kv.Key}: {kv.Value}"))}");
             // Same with the rest, really. 
-            Console.WriteLine($"Job Sectors: {string.Join(", ", Planet.JobSectors.Select(kv => $"{kv.Key}: {kv.Value.Workers}/{kv.Value.Jobs}"))}");
+            Console.WriteLine($"Job Sectors: {string.Join(", ", Planet.Jobs.Select(kv => $"{kv.Key}: {kv.Value.Workers}/{kv.Value.Jobs}"))}");
             Console.WriteLine($"Districts  : {string.Join(", ", Planet.Districts.Select(kv => $"{kv.Key}: {kv.Value.Size}"))}");
         }
         private void GetInput(out State newState)
@@ -170,7 +168,7 @@ namespace EcoSim.Simulations
             {
                 // Invalid key breaks the whole thing.
                 command.GetArg(0, out var keyArg);
-                if(!Planet.JobSectors.ContainsKey(keyArg))
+                if(!Planet.Jobs.ContainsKey(keyArg))
                     throw new KeyNotFoundException();
 
                 // What to do with it. 
@@ -202,7 +200,8 @@ namespace EcoSim.Simulations
 
                 try
                 {
-                    Planet.TryAssignJobs(keyArg, (int)value);
+                    Planet.TryAssignJobs(keyArg, (int)value, out int workersAdded);
+                    Console.WriteLine($"{Planet.Jobs[keyArg].Name} Added {workersAdded} jobs");
                 }
                 catch(Exception e)
                 {

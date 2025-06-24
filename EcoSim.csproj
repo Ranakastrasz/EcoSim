@@ -19,4 +19,9 @@
     <ProjectReference Include="..\AssertUtils\AssertUtils\AssertUtils.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Planets\Containers\" />
+    <Folder Include="Ships\Interfaces\" />
+  </ItemGroup>
+
 </Project>
