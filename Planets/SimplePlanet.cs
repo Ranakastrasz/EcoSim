@@ -1,4 +1,5 @@
 ﻿using EcoSim.Extensions;
+using EcoSim.Items;
 using EcoSim.Objects;
 using EcoSim.Planets.Definitions;
 using EcoSim.Planets.Stacks;
@@ -9,8 +10,8 @@ namespace EcoSim.Planet
     public class SimplePlanet
     { 
         public Dictionary<string, DistrictStack> Districts = []; // Districts produce jobs.
-        public Inventory Stockpiles = new ();               // Essentially a dictionary of Labeled<Float>
         public Dictionary<string, JobStack> Jobs           = []; // Jobs, on Update, produce/consume resources.
+        public Inventory Stockpiles = new ();
         public int size = 0;
 
         public SimplePlanet()
@@ -48,20 +49,13 @@ namespace EcoSim.Planet
             return false;
         }
 
-        public void AddDistrict(DistrictType district, int value)
+        public void AddDistrict(DistrictType districtType, int value)
         {
             // If the item already exists, update its quantity
-            Districts.ForceGet(district.ID, () => new DistrictStack(district));
+            DistrictStack district = Districts.ForceGet(districtType.ID, () => new DistrictStack(districtType));
 
-            if(Districts.ContainsKey(district.Name))
-            {
-                Districts[district.Name].Size += value;
-            }
-            else
-            {
-                Districts.Add(district.Name, district);
-            }
-            AddJobs(district.Job, value);
+            district.Size += value;
+            AddJobs(district.Job, value); // Should be a sync jobs or something. Update jobs from districts.
         }
 
         public void Update()
@@ -84,7 +78,7 @@ namespace EcoSim.Planet
                 sector = new JobStack(job);
                 Jobs.Add(job.ID, sector);
             }
-            Jobs[job.ID].AddJobs(quantity,out int jobsAdded);
+            Jobs[job.ID].Add(quantity);
         }
         public void TryAssignJobs(string name, int quantity, out int workersAdded)
         {

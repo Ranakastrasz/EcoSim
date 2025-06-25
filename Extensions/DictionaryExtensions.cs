@@ -10,6 +10,7 @@ namespace EcoSim.Extensions
     public static class DictionaryExtensions
     {
         public static TValue ForceGet<TKey, TValue>(this Dictionary<TKey, TValue> dict, TKey key, Func<TValue> creator)
+            where TKey :notnull
         {
             if(!dict.TryGetValue(key, out var value))
             {

@@ -1,16 +1,19 @@
 ﻿using AssertUtils;
+using EcoSim.Interfaces;
 using EcoSim.Interfaces.Definitions;
+using EcoSim.Items;
 using EcoSim.Objects;
 
 namespace EcoSim.Planets.Definitions
 {
-    public class JobType: IDefinitionType
+    public class JobType: IDefinitionType, IStackable
     {
         // Probably should impliment ItemDelta, instead of handling it here. When ItemDelta exists anyway.
         public string Name { get; }
         public string ID { get; }
         string IDefinitionType.Name => Name;
         string IDefinitionType.ID => ID;
+        string IDefinitionType.Description => "";
         public IReadOnlyList<Labeled<float>> Inputs { get; } // Required resources to spend to run this job.
         public IReadOnlyList<Labeled<float>> Outputs { get; } // Resources produced when the job is run, assuming Input is met.
         
@@ -22,11 +25,11 @@ namespace EcoSim.Planets.Definitions
             Outputs = outputs.ToList().AsReadOnly(); // Safe, nonmutable copy.
             Inputs = inputs?.ToList().AsReadOnly() ?? new List<Labeled<float>>().AsReadOnly();
 
-            foreach(var output in Outputs)
-                AssertUtil.AssertArgumentNotNegative(output.Value);
-
             foreach(var input in Inputs)
-                AssertUtil.AssertArgumentNotNegative(input.Value);
+                AssertUtil.Greater(input.Value, 0);
+            foreach(var output in Outputs)
+                AssertUtil.Greater(output.Value,0);
+
             // Could, I suppose, allow an array which is then sorted, and 0 values are simply ignored,
             // So I can have both inputs and outputs in one batch
             // But this is cleaner.

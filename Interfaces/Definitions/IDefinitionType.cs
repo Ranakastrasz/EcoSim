@@ -10,5 +10,6 @@ namespace EcoSim.Interfaces.Definitions
     {
         string Name { get; }
         string ID { get; }
+        string Description { get; }
     }
 }

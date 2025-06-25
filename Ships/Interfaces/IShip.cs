@@ -6,7 +6,7 @@ using System.Text;
 using System.Threading.Tasks;
 
 // Not sure what this will exactly do yet. Probably how ships can interact with each other uses this tho.
-namespace EcoSim.Ships
+namespace EcoSim.Ships.Interfaces
 {
     internal interface IShip
     {

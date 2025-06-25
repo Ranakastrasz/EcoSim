@@ -7,8 +7,10 @@ namespace EcoSim.Planets.Definitions
     {
         public readonly string Name;
         public readonly string ID;
+        public readonly string Description = "";
         string IDefinitionType.Name => Name;
         string IDefinitionType.ID => ID;
+        string IDefinitionType.Description => Description;
 
         public readonly JobType Job;  // The job it provides.
         public readonly int JobCount; // How many jobs it provides of that type

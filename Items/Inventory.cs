@@ -1,10 +1,12 @@
-﻿using System;
+﻿using EcoSim.Objects;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using AssertUtils;
 
-namespace EcoSim.Objects
+namespace EcoSim.Items
 {
     // Might be better as an Interface
     // but, a container which lets you add or remove items, or adjust values though Add or Remove.
@@ -16,13 +18,11 @@ namespace EcoSim.Objects
 
         public void Add(Labeled<float> item)
         {
-            // No safety check here, assume negatives are permitted for now.
+            AssertUtil.Positive(item.Value);
             string key = item.Key;
             ;
             if (!Items.TryGetValue(key, out float existingItem))
-            {
                 Items.Add(key,item);
-            }
             else
             {
                 // Update the existing item's quantity
@@ -31,6 +31,18 @@ namespace EcoSim.Objects
             }
         }
 
+        public void Remove(Labeled<float> item)
+        {
+            string key = item.Key;
+            AssertUtil.Positive(item.Value);
+
+            AssertUtil.ContainsKey(Items, key);
+
+            AssertUtil.NotLess(Items[key], item);
+
+            Items[key] -= item.Value;
+            if(Items[key] == 0) Items.Remove(key);
+        }
 
         public void Remove(string item)
         {
@@ -45,17 +57,17 @@ namespace EcoSim.Objects
         }
         public bool Contains(Labeled<float> item)
         { 
-            return (Contains(item.Key));
+            return Contains(item.Key);
         }
 
         public bool CanSpend(Labeled<float> cost) // Needs a list version too.
-        { 
+        {
             // Asserting
-            if (cost.Value < 0) throw new ArgumentOutOfRangeException(nameof(cost),cost,"Costs must not be negative");
-            if (cost.Value == 0) return true;
+            AssertUtil.NotNegative(cost.Value);
+            if (cost.Value == 0) return true; // Its free! Admittedly, this might be something going wrong anyway.
             if (Items.TryGetValue(cost.Key,out var existingItem))
             { 
-                if (existingItem < cost) return true;
+                if (existingItem >= cost) return true;
                 return false;
             }
             return true;
@@ -63,9 +75,9 @@ namespace EcoSim.Objects
         public bool TrySpend (Labeled<float> cost)
         {
             if (CanSpend(cost))
-            { 
-                Items.TryGetValue(cost.Key,out var existingItem);
-                existingItem = existingItem - cost;
+            {
+                Remove(cost);
+                
                 return true;
             }
             return false;

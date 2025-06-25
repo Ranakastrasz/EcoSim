@@ -4,6 +4,7 @@ using EcoSim.Planet;
 using EcoSim.Planets.Definitions;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Reflection.Metadata.Ecma335;
@@ -44,20 +45,20 @@ namespace EcoSim.Simulations
                 new []{new Labeled<float>("Food", 4) },
                 new []{new Labeled<float>("Energy"  , 1) });
 
-            //Job mineralWorker = new Job("Miner"     ,{new Labeled<float>("Minerals" ,4) },new Labeled<float>("Energy",1));
-
-            //Job energyWorker  = new Job("Technician",new("Energy"   ,4),new("Food"  ,1));
-            //Job foodWorker    = new Job("Farmer"    ,new("Food"     ,4),new("Energy",1));
-
             Labeled<int> districtCost = new("Minerals",50);
 
-            List<DistrictType> districts = new();
-            districts.Add(new DistrictType("Mining District", mineralWorker ,2, districtCost));//mineralNode));
-            districts.Add(new DistrictType("Energy District", energyWorker  ,2, districtCost));//energyNode));
-            districts.Add(new DistrictType("Food District"  , foodWorker    ,2, districtCost));//foodNode));
 
+
+            List<DistrictType> districts = new();
+            districts.Add(new DistrictType("Mining District", mineralWorker ,2, districtCost));
+            districts.Add(new DistrictType("Energy District", energyWorker  ,2, districtCost));
+            districts.Add(new DistrictType("Food District"  , foodWorker    ,2, districtCost));
 
             planet.TryAddDistrictTypes(districts);
+            foreach(DistrictType districtType in districts)
+            {
+                planet.AddDistrict(districtType, 1);
+            }
 
             List<Labeled<float>> stockpiles = new();
             stockpiles.Add(new("Minerals", 50));
@@ -150,6 +151,9 @@ namespace EcoSim.Simulations
             // Same with the rest, really. 
             Console.WriteLine($"Job Sectors: {string.Join(", ", Planet.Jobs.Select(kv => $"{kv.Key}: {kv.Value.Workers}/{kv.Value.Jobs}"))}");
             Console.WriteLine($"Districts  : {string.Join(", ", Planet.Districts.Select(kv => $"{kv.Key}: {kv.Value.Size}"))}");
+            Console.WriteLine($"Commands: Continue, Exit");
+            Console.WriteLine($"Job <JobType> <add|remove> <1>");
+
         }
         private void GetInput(out State newState)
         {
@@ -230,7 +234,9 @@ namespace EcoSim.Simulations
                 newState = State.Input;
                 return;
             }
-            newState = State.Error;
+#pragma warning disable CS0162 // Unreachable code detected
+            newState = State.Error; // Technically, should never happen
+#pragma warning restore CS0162 // Unreachable code detected
         }
     }
 }

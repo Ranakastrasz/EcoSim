@@ -1,38 +1,29 @@
 ﻿using AssertUtils;
+using EcoSim.Items;
 using EcoSim.Objects;
 using EcoSim.Planets.Definitions;
+using System.Diagnostics;
 using System.Drawing;
 using System.Xml;
 
 namespace EcoSim.Planets.Stacks
 {
-    public class JobStack :BaseStack<JobType>
+    public class JobStack :AbstractStack<JobType>
     {
         public JobType Job { get => BaseType; protected set => BaseType = value; }
         public IReadOnlyList<Labeled<float>> Inputs => Job.Inputs;
         public IReadOnlyList<Labeled<float>> Outputs => Job.Outputs;
 
         private int _workers; // How many workers are currently assigned to this job
-        private int _jobs;
 
-        public int Jobs
-        {
-            get => _jobs;
-            set
-            {
-                AssertUtil.AssertArgumentNotNegative(value);
-                _jobs = value;
-                if(_workers > _jobs)
-                    _workers = _jobs;
-            }
-        }
+        public int Jobs { get => Count; set => Count = value; }
         public int Workers
         {
             get => _workers;
-            set
+            private set
             {
-                AssertUtil.AssertArgumentNotNegative(value);
-                AssertUtil.AssertArgumentNotGreater(value,_jobs);
+                Debug.Assert(value >= 0);
+                Debug.Assert(value <= Jobs);
                 _workers = value;
             }
         }
@@ -108,10 +99,8 @@ namespace EcoSim.Planets.Stacks
         }
         public void RemoveJobs(int jobs, out int jobsRemoved)
         {
-            AddJobs(-jobs, out int jobsAdded);
-            jobsRemoved = -jobsAdded;
+            Remove(jobs, out jobsRemoved); // Obvious wrapper is obvious. But specific, and useful for now.
         }
         public void RemoveAllWorkers() => RemoveWorkers(Workers, out int workersRemoved);
-
     }
 }

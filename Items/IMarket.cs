@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 using EcoSim.Objects;
 
 // Expose the name, and resources+Prices of a market
-namespace EcoSim.Interfaces
+namespace EcoSim.Items
 {
     internal interface IMarket
     {

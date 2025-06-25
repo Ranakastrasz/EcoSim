@@ -4,13 +4,14 @@ using System.Drawing;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using EcoSim.Interfaces;
+using EcoSim.Items;
 using EcoSim.Objects;
 
 namespace EcoSim.Planet
 {
     // Doesn't do anything, just a dummy planet that implements IMarket
     // And can be initilized with a name and some prices.
+    // Meant for Ship Testing.
     internal class DummyPlanet: IMarket
     {
         public string Name {get; private set;} = "";
