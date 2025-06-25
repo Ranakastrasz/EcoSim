@@ -12,10 +12,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Planets\Containers\" />
-  </ItemGroup>
-
-  <ItemGroup>
     <ProjectReference Include="..\AssertUtils\AssertUtils\AssertUtils.csproj" />
   </ItemGroup>
 

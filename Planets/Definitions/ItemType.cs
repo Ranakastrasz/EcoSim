@@ -1,5 +1,7 @@
 ﻿using EcoSim.Interfaces;
 using EcoSim.Interfaces.Definitions;
+using EcoSim.Utils;
+using AssertUtils;
 
 namespace EcoSim.Planets.Definitions
 {
@@ -18,7 +20,8 @@ namespace EcoSim.Planets.Definitions
         public ItemType(string name, string id = "", int stackSize = int.MaxValue)
         { 
             Name = name;
-            ID = id == null ? name.ToLower() : id;
+            ID = id == "" ? name.ToLower().RemoveWhitespace() : id;
+            AssertUtil.Equal(ID, id); // Ensure ID is lowercase and whitespace removed.
             StackSize = stackSize;
             StackSizeF = stackSize;
         }

@@ -3,6 +3,7 @@ using EcoSim.Interfaces;
 using EcoSim.Interfaces.Definitions;
 using EcoSim.Items;
 using EcoSim.Objects;
+using EcoSim.Utils;
 
 namespace EcoSim.Planets.Definitions
 {
@@ -18,10 +19,11 @@ namespace EcoSim.Planets.Definitions
         public IReadOnlyList<Labeled<float>> Outputs { get; } // Resources produced when the job is run, assuming Input is met.
         
 
-        public JobType(string name, IReadOnlyList<Labeled<float>> outputs, IReadOnlyList<Labeled<float>>? inputs = null)
+        public JobType(string id, string name, IReadOnlyList<Labeled<float>> outputs, IReadOnlyList<Labeled<float>>? inputs = null)
         {
             Name = name;
-            ID = name.ToLower();
+            ID = id.ToLower().RemoveWhitespace();
+            AssertUtil.Equal(ID, id); // Ensure ID is lowercase and whitespace removed.
             Outputs = outputs.ToList().AsReadOnly(); // Safe, nonmutable copy.
             Inputs = inputs?.ToList().AsReadOnly() ?? new List<Labeled<float>>().AsReadOnly();
 

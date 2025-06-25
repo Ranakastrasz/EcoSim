@@ -1,9 +1,12 @@
 ﻿using EcoSim.Objects;
 using EcoSim.Interfaces.Definitions;
+using EcoSim.Interfaces;
+using EcoSim.Utils;
+using AssertUtils;
 
 namespace EcoSim.Planets.Definitions
 {
-    public class DistrictType: IDefinitionType
+    public class DistrictType: IDefinitionType, IStackable
     {
         public readonly string Name;
         public readonly string ID;
@@ -19,13 +22,14 @@ namespace EcoSim.Planets.Definitions
         public readonly Labeled<int> Price; // The cost to build
         public readonly ResourceNodeType? Resource; // The resource deposit it is built on. Optional.
 
-        public DistrictType(string name, JobType job, int jobCount, Labeled<int> price, ResourceNodeType? resource = null)
+        public DistrictType(string id, string name, JobType job, int jobCount, Labeled<int> price, ResourceNodeType? resource = null)
         {
             Name = name;
-            ID = name.ToLower();
+            ID = id.ToLower().RemoveWhitespace();
+            AssertUtil.Equal(ID, id); // Ensure ID is lowercase and whitespace removed.
+
             Job = job;
             JobCount = jobCount;
-            Price = price;
             Price = price;
             Resource = resource;
         }

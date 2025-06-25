@@ -1,9 +1,10 @@
-﻿using EcoSim.Extensions;
+﻿using AssertUtils;
+using EcoSim.Extensions;
 using EcoSim.Items;
 using EcoSim.Objects;
 using EcoSim.Planets.Definitions;
 using EcoSim.Planets.Stacks;
-
+using System.Xml.Linq;
 
 namespace EcoSim.Planet
 {
@@ -17,7 +18,7 @@ namespace EcoSim.Planet
         public SimplePlanet()
         {
         }
-        public void AddStockpiles(List<Labeled<float>> ItemList)
+        public void RegisterStockpiles(List<Labeled<float>> ItemList)
         { 
             foreach (Labeled<float> item in ItemList)
             { 
@@ -49,13 +50,25 @@ namespace EcoSim.Planet
             return false;
         }
 
-        public void AddDistrict(DistrictType districtType, int value)
+        public void AddDistrict(DistrictType districtType, int quantity, out int districtsAdded)
         {
-            // If the item already exists, update its quantity
+            AssertUtil.Positive(quantity);
             DistrictStack district = Districts.ForceGet(districtType.ID, () => new DistrictStack(districtType));
 
-            district.Size += value;
-            AddJobs(district.Job, value); // Should be a sync jobs or something. Update jobs from districts.
+            district.Add(quantity);
+            AddJobs(district.BaseType.Job, quantity*district.BaseType.JobCount, out int jobsAdded);
+            districtsAdded = quantity;
+            // Should be a sync jobs or something. Update jobs from districts.
+            // Especially for Remove, since if it drops workers below the count.
+            // Better a function recalculate and safely remove workers.
+        }
+        public void RemoveDistrict(DistrictType districtType, int quantity, out int districtsRemoved)
+        {
+            AssertUtil.Positive(quantity);
+            DistrictStack district = Districts.ForceGet(districtType.ID, () => new DistrictStack(districtType));
+
+            district.Remove(quantity, out districtsRemoved);
+            RemoveJobs(district.BaseType.Job, quantity * district.BaseType.JobCount, out int jobsRemoved);
         }
 
         public void Update()
@@ -70,25 +83,42 @@ namespace EcoSim.Planet
                 sector.Update(Stockpiles);
             }
         }
-        private void AddJobs(JobType job, int quantity)
+        private void AddJobs(JobType job, int quantity, out int JobsAdded)
         {
-
-            if(!Jobs.TryGetValue(job.ID, out var sector))
+            if(!Jobs.TryGetValue(job.ID, out var jobs))
             {
-                sector = new JobStack(job);
-                Jobs.Add(job.ID, sector);
+                jobs = new JobStack(job);
+                Jobs.Add(job.ID, jobs);
             }
             Jobs[job.ID].Add(quantity);
+            JobsAdded = quantity;
         }
-        public void TryAssignJobs(string name, int quantity, out int workersAdded)
+        private void RemoveJobs(JobType job, int quantity, out int JobsRemoved)
         {
-
-            // Probably want a reverse function to unassign jobs too. or let this do negative quantities.
-            // Assign workers to the job sector
-            name = name.ToLower();
-            var sector = Jobs[name]; // Includes builtin assert.
-
-            sector.AddWorkers(quantity,out workersAdded);
+            JobsRemoved = 0;
+            if (Jobs.TryGetValue(job.ID, out var jobs))
+            {
+                jobs.Remove(quantity, out int removed);
+                //if (jobs.Count == 0) // Breaks other things, so don't do this yet.
+                //{
+                //    Jobs.Remove(job.ID);
+                //}
+                JobsRemoved = removed;
+            }
+        }
+        internal void TryFillJobs(JobType job, int quantity, out int workersAdded)
+        {
+            AssertUtil.ContainsKey(Jobs, job.ID);
+            AssertUtil.Positive(quantity);
+            var sector = Jobs[job.ID];
+            sector.AddWorkers(quantity, out workersAdded);
+        }
+        internal void TryEmptyJobs(JobType job, int quantity, out int workersRemoved)
+        {
+            AssertUtil.ContainsKey(Jobs, job.ID);
+            AssertUtil.Positive(quantity);
+            var sector = Jobs[job.ID];
+            sector.RemoveWorkers(quantity, out workersRemoved);
         }
     }
 }
