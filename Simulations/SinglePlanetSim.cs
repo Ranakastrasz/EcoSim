@@ -9,6 +9,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Reflection.Metadata.Ecma335;
+using System.Security.AccessControl;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -265,7 +266,8 @@ namespace EcoSim.Simulations
             {
                 if(actionArg.Equals("add"))
                 {
-                    Planet.AddDistrict(districtType, (int)value, out int districtsAdded);
+                    Planet.TryBuyDistrict(districtType, (int)value, out int districtsAdded);
+                    //Planet.AddDistrict(districtType, (int)value, out int districtsAdded);
                     Console.WriteLine($"{Planet.Jobs[keyArg].Name} Added {districtsAdded} districts");
                 }
                 else if(actionArg.Equals("remove"))

@@ -70,6 +70,19 @@ namespace EcoSim.Planet
             district.Remove(quantity, out districtsRemoved);
             RemoveJobs(district.BaseType.Job, quantity * district.BaseType.JobCount, out int jobsRemoved);
         }
+        internal void TryBuyDistrict(DistrictType districtType, int quantity, out int districtsAdded)
+        {
+            AssertUtil.Positive(quantity);
+            DistrictStack district = Districts.ForceGet(districtType.ID, () => new DistrictStack(districtType));
+
+//            Stockpiles.CanSpend(district.BaseType.Price, out bool spent);
+  //          int toBuy = Math.Min(quantity, district.BaseType.Price
+
+            district.Add(quantity);
+            AddJobs(district.BaseType.Job, quantity * district.BaseType.JobCount, out int jobsAdded);
+            districtsAdded = quantity;
+        }
+
 
         public void Update()
         {
@@ -120,5 +133,6 @@ namespace EcoSim.Planet
             var sector = Jobs[job.ID];
             sector.RemoveWorkers(quantity, out workersRemoved);
         }
+
     }
 }
